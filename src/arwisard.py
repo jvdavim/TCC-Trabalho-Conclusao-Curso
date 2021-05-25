@@ -5,7 +5,6 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.core.numeric import _flatnonzero_dispatcher
 import pandas as pd
 import wisardpkg as wp
 from memory_profiler import profile
@@ -102,7 +101,7 @@ class ARWisardEstimator(wp.RegressionWisard):
 
 
 def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion: str = "mae"):
-    p = q = range(0, 1)
+    p = q = range(0, 10)
     d = [0]
     t_size = np.arange(256, 1024, 256, dtype=int)
     t_min = np.linspace(train_ts.min(), train_ts.quantile(0.25), 5, dtype=float)
@@ -113,8 +112,8 @@ def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion:
     means = [wp.SimpleMean(), wp.Median(), wp.GeometricMean(), wp.PowerMean(2), wp.HarmonicMean(), wp.ExponentialMean()]
     pmdf = pd.DataFrame()
     for mean in tqdm(means):
-        for order in tqdm(pdq):
-            for thermometer in tqdm(t_sz_min_max):
+        for order in tqdm(pdq, leave=False):
+            for thermometer in tqdm(t_sz_min_max, leave=False):
                 for addr in tqdm(addrs, leave=False):
                     mod = ARWisardEstimator(train_ts, thermometer, addr, order=order, mean=mean)
                     results = mod.fit()
