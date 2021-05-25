@@ -5,6 +5,7 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.core.numeric import _flatnonzero_dispatcher
 import pandas as pd
 import wisardpkg as wp
 from memory_profiler import profile
@@ -172,6 +173,7 @@ if __name__ == "__main__":
         pmdf = pd.read_csv(args.best, index_col=0)
         pmdf.columns = ['addr', 'mae', 'mape', 'mpe', 'order', 'rmse', 'thermometer']
         pmdf['order'] = pmdf['order'].apply(lambda x: tuple(map(int, x.strip('(').strip(')').split(','))))
+        pmdf['thermometer'] = pmdf['thermometer'].apply(lambda x: tuple(map(int, map(float, x.strip('(').strip(')').split(',')))))
         best = pmdf[pmdf[criterion].eq(pmdf[criterion].min())].iloc[0]
 
     start = time.time()
