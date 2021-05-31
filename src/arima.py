@@ -55,7 +55,7 @@ def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion:
 
 
 @profile(precision=4,
-         stream=open(f"{os.path.join('results', 'multistep', 'arima')}/{args.dataset.split('/')[-2]}.log", 'w+'))
+         stream=open(f"{os.path.join('results', 'arima')}/{args.dataset.split('/')[-2]}.log", 'w+'))
 def fit_predict(train_ts: np.ndarray, best: pd.Series) -> Tuple[ARIMAResults, np.ndarray]:
     model = ARIMA(train_ts, order=best['order'], enforce_stationarity=False, enforce_invertibility=False).fit()
     forecast = model.forecast(steps=args.test_size)
@@ -69,7 +69,7 @@ def log_results(pmdf, model, forecast):
         ds_name = 'temperatures'
     else:
         ds_name = 'synthetic'
-    results_dir = os.path.join('results', 'multistep', 'arima')
+    results_dir = os.path.join('results', 'arima')
     os.makedirs(results_dir, exist_ok=True)
 
     model.plot_diagnostics(figsize=(20, 14))

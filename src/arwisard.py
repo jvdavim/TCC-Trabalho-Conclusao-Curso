@@ -130,7 +130,7 @@ def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion:
 
 
 @profile(precision=4,
-         stream=open(f"{os.path.join('results', 'multistep', 'arwisard')}/{args.dataset.split('/')[-2]}.log", 'w+'))
+         stream=open(f"{os.path.join('results', 'arwisard')}/{args.dataset.split('/')[-2]}.log", 'w+'))
 def fit_predict(train_ts: np.ndarray, best: pd.Series):
     # TODO Replace simple mean with the best one
     model = ARWisardEstimator(train_ts, best['thermometer'], best['addr'], order=best['order'], mean=wp.SimpleMean()).fit()
@@ -145,7 +145,7 @@ def log_results(pmdf, forecast):
         ds_name = 'temperatures'
     else:
         ds_name = 'synthetic'
-    results_dir = os.path.join('results', 'multistep', 'arima')
+    results_dir = os.path.join('results', 'arima')
     os.makedirs(results_dir, exist_ok=True)
 
     plot_observed_vs_forecast(
