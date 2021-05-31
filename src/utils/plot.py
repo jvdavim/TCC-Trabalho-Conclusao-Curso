@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 
+plt.style.use('ggplot')
+
 
 def plot_time_series(fname, time, values, title):
     plt.figure(figsize=(10, 6))
