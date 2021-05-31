@@ -111,8 +111,7 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
 
 @profile(precision=4, stream=open(f"{os.path.join('results', 'prophet')}/{args.dataset.split('/')[-2]}.log", 'w+'))
 def fit_predict(train_ts: np.ndarray, best: pd.Series):
-    model = Prophet(**best.to_dict())
-    model.fit(train_ts)
+    model = Prophet(**best.to_dict()).fit(train_ts)
     future = model.make_future_dataframe(periods=args.test_size)
     forecast = model.predict(future)
     return model, forecast
@@ -125,7 +124,7 @@ def log_results(pmdf, forecast, model):
         ds_name = 'temperatures'
     else:
         ds_name = 'synthetic'
-    results_dir = os.path.join('results', 'arima')
+    results_dir = os.path.join('results', 'prophet')
     os.makedirs(results_dir, exist_ok=True)
 
     try:
@@ -138,12 +137,12 @@ def log_results(pmdf, forecast, model):
         print(f'Erro: {ex}')
 
     try:
-        fig2 = model.plot_components(forecast)
+        model.plot_components(forecast)
         plt.savefig(os.path.join(results_dir, f'{ds_name}_diagnostics.png'))
     except Exception as ex:
         print(f'Erro: {ex}')
 
-    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'))
+    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'), index=False)
 
 
 if __name__ == '__main__':

@@ -26,17 +26,6 @@ args = parser.parse_args()
 
 
 def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion: str = 'aic') -> Tuple[pd.DataFrame, pd.Series]:
-    """Search best hyperparameters for dataset.
-
-    Args:
-        train_ts (np.ndarray): Train time series.
-        criterion (str, optional): Criterion to minimize the error. Can be any metric used
-        in the experiment. Defaults to 'aic'.
-
-    Returns:
-        Tuple[pd.DataFrame, pd.Series]: Return a pandas dataframe with all runs results and a pandas series with the
-         best one.
-    """
     p = d = q = range(0, 10)
     pdq = list(itertools.product(p, d, q))
     pmdf = pd.DataFrame()
@@ -54,8 +43,7 @@ def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion:
     return pmdf, best
 
 
-@profile(precision=4,
-         stream=open(f"{os.path.join('results', 'arima')}/{args.dataset.split('/')[-2]}.log", 'w+'))
+@profile(precision=4, stream=open(f"{os.path.join('results', 'arima')}/{args.dataset.split('/')[-2]}.log", 'w+'))
 def fit_predict(train_ts: np.ndarray, best: pd.Series) -> Tuple[ARIMAResults, np.ndarray]:
     model = ARIMA(train_ts, order=best['order'], enforce_stationarity=False, enforce_invertibility=False).fit()
     forecast = model.forecast(steps=args.test_size)
@@ -81,7 +69,7 @@ def log_results(pmdf, model, forecast):
         forecast,
         title=f'ARIMA - Inferência de {args.test_size} no dataset {args.dataset}')
 
-    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'))
+    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'), index=False)
 
 
 if __name__ == '__main__':

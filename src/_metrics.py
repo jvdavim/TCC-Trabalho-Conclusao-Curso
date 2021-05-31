@@ -11,15 +11,15 @@ def best(df, col):
 
 
 if __name__ == '__main__':
-    arima_temperatures = pd.read_csv('results/arima/temperatures_metrics.txt', index_col=0)
-    arima_covid = pd.read_csv('results/arima/covid_metrics.txt', index_col=0)
-    arima_synthetic = pd.read_csv('results/arima/synthetic_metrics.txt', index_col=0)
-    arwisard_temperatures = pd.read_csv('results/arwisard/temperatures_metrics.txt', index_col=0)
-    arwisard_covid = pd.read_csv('results/arwisard/covid_metrics.txt', index_col=0)
-    arwisard_synthetic = pd.read_csv('results/arwisard/synthetic_metrics.txt', index_col=0)
-    prophet_temperatures = pd.read_csv('results/prophet/temperatures_metrics.txt', index_col=0)
-    prophet_covid = pd.read_csv('results/prophet/covid_metrics.txt', index_col=0)
-    prophet_synthetic = pd.read_csv('results/prophet/synthetic_metrics.txt', index_col=0)
+    arima_temperatures = pd.read_csv('results/arima/temperatures_metrics.txt')
+    arima_covid = pd.read_csv('results/arima/covid_metrics.txt')
+    arima_synthetic = pd.read_csv('results/arima/synthetic_metrics.txt')
+    arwisard_temperatures = pd.read_csv('results/arwisard/temperatures_metrics.txt')
+    arwisard_covid = pd.read_csv('results/arwisard/covid_metrics.txt')
+    arwisard_synthetic = pd.read_csv('results/arwisard/synthetic_metrics.txt')
+    prophet_temperatures = pd.read_csv('results/prophet/temperatures_metrics.txt')
+    prophet_covid = pd.read_csv('results/prophet/covid_metrics.txt')
+    prophet_synthetic = pd.read_csv('results/prophet/synthetic_metrics.txt')
 
     df = pd.DataFrame([
         ['arima', 'temperatures', best(arima_temperatures, 'rmse'), best(arima_temperatures, 'mape'), best(arima_temperatures, 'mpe'), best(arima_temperatures, 'mae')],

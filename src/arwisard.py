@@ -129,8 +129,7 @@ def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion:
     return pmdf, best
 
 
-@profile(precision=4,
-         stream=open(f"{os.path.join('results', 'arwisard')}/{args.dataset.split('/')[-2]}.log", 'w+'))
+@profile(precision=4, stream=open(f"{os.path.join('results', 'arwisard')}/{args.dataset.split('/')[-2]}.log", 'w+'))
 def fit_predict(train_ts: np.ndarray, best: pd.Series):
     # TODO Replace simple mean with the best one
     model = ARWisardEstimator(train_ts, best['thermometer'], best['addr'], order=best['order'], mean=wp.SimpleMean()).fit()
@@ -145,7 +144,7 @@ def log_results(pmdf, forecast):
         ds_name = 'temperatures'
     else:
         ds_name = 'synthetic'
-    results_dir = os.path.join('results', 'arima')
+    results_dir = os.path.join('results', 'arwisard')
     os.makedirs(results_dir, exist_ok=True)
 
     plot_observed_vs_forecast(
@@ -154,7 +153,7 @@ def log_results(pmdf, forecast):
         forecast,
         title=f'ARIMA - Inferência de {args.test_size} no dataset {args.dataset}')
 
-    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'))
+    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'), index=False)
 
 
 if __name__ == '__main__':
