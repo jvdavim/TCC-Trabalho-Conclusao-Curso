@@ -26,15 +26,13 @@ args = parser.parse_args()
 
 
 class suppress_stdout_stderr(object):
-    '''
-    A context manager for doing a "deep suppression" of stdout and stderr in
+    """A context manager for doing a 'deep suppression' of stdout and stderr in
     Python, i.e. will suppress all print, even if the print originates in a
     compiled C/Fortran sub-function.
        This will not suppress raised exceptions, since exceptions are printed
     to stderr just before a script exits, and after the context manager has
     exited (at least, I think that is why it lets exceptions through).
-
-    '''
+    """
 
     def __init__(self):
         # Open a pair of null files
@@ -56,7 +54,7 @@ class suppress_stdout_stderr(object):
             os.close(fd)
 
 
-def search_hyperparameters(train_ts: np.ndarray, criterion: str = "mae"):
+def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
     parameters = {
         'growth': 'linear',
         'changepoints': None,
@@ -122,12 +120,12 @@ def fit_predict(train_ts: np.ndarray, best: pd.Series):
 
 def log_results(pmdf, forecast, model):
     if 'covid' in args.dataset:
-        ds_name = "covid"
-    elif 'temperature' in args.dataset:
-        ds_name = "temperatures"
+        ds_name = 'covid'
+    elif 'temperatures' in args.dataset:
+        ds_name = 'temperatures'
     else:
-        ds_name = "synthetic"
-    results_dir = os.path.join("results", "multistep", "arima")
+        ds_name = 'synthetic'
+    results_dir = os.path.join('results', 'multistep', 'arima')
     os.makedirs(results_dir, exist_ok=True)
 
     try:
@@ -137,13 +135,13 @@ def log_results(pmdf, forecast, model):
             forecast.iloc[-args.test_size:, :].values,
             title=f'Prophet - Inferência de {args.test_size} no dataset {ds_name}')
     except Exception as ex:
-        print(f"Erro: {ex}")
+        print(f'Erro: {ex}')
 
     try:
         fig2 = model.plot_components(forecast)
         plt.savefig(os.path.join(results_dir, f'{ds_name}_diagnostics.png'))
     except Exception as ex:
-        print(f"Erro: {ex}")
+        print(f'Erro: {ex}')
 
     pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'))
 
@@ -161,13 +159,13 @@ if __name__ == '__main__':
     train_ts = ts.iloc[:-args.test_size, :]
     test_ts = ts.iloc[-args.test_size:]
 
-    pmdf, best = search_hyperparameters(train_ts, criterion="mae")
+    pmdf, best = search_hyperparameters(train_ts, criterion='mae')
 
     start = time.time()
     try:
         model, forecast = fit_predict(train_ts, best)
     except Exception as ex:
-        print(f"Erro: {ex}")
-    print(f"Elapsed time: {round(time.time() - start, 2)} seconds")
+        print(f'Erro: {ex}')
+    print(f'Elapsed time: {round(time.time() - start, 2)} seconds')
 
     log_results(pmdf, forecast, model)

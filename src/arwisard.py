@@ -100,7 +100,7 @@ class ARWisardEstimator(wp.RegressionWisard):
         return agg
 
 
-def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion: str = "mae"):
+def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion: str = 'mae'):
     p = q = range(0, 10)
     d = [0]
     t_size = np.arange(256, 1024, 256, dtype=int)
@@ -140,24 +140,24 @@ def fit_predict(train_ts: np.ndarray, best: pd.Series):
 
 def log_results(pmdf, forecast):
     if 'covid' in args.dataset:
-        ds_name = "covid"
-    elif 'temperature' in args.dataset:
-        ds_name = "minimum_daily_temperature"
+        ds_name = 'covid'
+    elif 'temperatures' in args.dataset:
+        ds_name = 'temperatures'
     else:
-        ds_name = "synthetic"
-    results_dir = os.path.join("results", "multistep", "arima")
+        ds_name = 'synthetic'
+    results_dir = os.path.join('results', 'multistep', 'arima')
     os.makedirs(results_dir, exist_ok=True)
 
     plot_observed_vs_forecast(
-        os.path.join(results_dir, f"{ds_name}_inference.png"),
+        os.path.join(results_dir, f'{ds_name}_inference.png'),
         test_ts.values,
         forecast,
-        title=f"ARIMA - Inferência de {args.test_size} no dataset {args.dataset}")
+        title=f'ARIMA - Inferência de {args.test_size} no dataset {args.dataset}')
 
-    pmdf.to_csv(os.path.join(results_dir, f"{ds_name}_metrics.txt"))
+    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     ts = pd.read_csv(args.dataset, index_col=0, squeeze=True)
 
     if isinstance(args.test_size, float):
@@ -177,6 +177,6 @@ if __name__ == "__main__":
 
     start = time.time()
     model, forecast = fit_predict(train_ts, best)
-    print(f"Elapsed time: {round(time.time() - start, 2)} seconds")
+    print(f'Elapsed time: {round(time.time() - start, 2)} seconds')
 
     log_results(pmdf, forecast)

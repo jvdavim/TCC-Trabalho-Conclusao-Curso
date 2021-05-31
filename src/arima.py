@@ -15,7 +15,7 @@ from tqdm import tqdm
 from utils.metrics import mae, mape, mpe, rmse
 from utils.plot import plot_observed_vs_forecast
 
-warnings.filterwarnings("ignore")
+warnings.filterwarnings('ignore')
 plt.style.use('ggplot')
 
 parser = argparse.ArgumentParser()
@@ -25,13 +25,13 @@ parser.add_argument('--test-size', default=7)
 args = parser.parse_args()
 
 
-def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion: str = "aic") -> Tuple[pd.DataFrame, pd.Series]:
+def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion: str = 'aic') -> Tuple[pd.DataFrame, pd.Series]:
     """Search best hyperparameters for dataset.
 
     Args:
         train_ts (np.ndarray): Train time series.
         criterion (str, optional): Criterion to minimize the error. Can be any metric used
-        in the experiment. Defaults to "aic".
+        in the experiment. Defaults to 'aic'.
 
     Returns:
         Tuple[pd.DataFrame, pd.Series]: Return a pandas dataframe with all runs results and a pandas series with the
@@ -40,7 +40,7 @@ def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion:
     p = d = q = range(0, 10)
     pdq = list(itertools.product(p, d, q))
     pmdf = pd.DataFrame()
-    for param in tqdm(pdq, desc="Searching best hyperparameters"):
+    for param in tqdm(pdq, desc='Searching best hyperparameters'):
         mod = ARIMA(train_ts, order=param, enforce_stationarity=False, enforce_invertibility=False)
         results = mod.fit()
         forecast = results.forecast(steps=args.test_size)
@@ -64,24 +64,24 @@ def fit_predict(train_ts: np.ndarray, best: pd.Series) -> Tuple[ARIMAResults, np
 
 def log_results(pmdf, model, forecast):
     if 'covid' in args.dataset:
-        ds_name = "covid"
-    elif 'temperature' in args.dataset:
-        ds_name = "minimum_daily_temperature"
+        ds_name = 'covid'
+    elif 'temperatures' in args.dataset:
+        ds_name = 'temperatures'
     else:
-        ds_name = "synthetic"
-    results_dir = os.path.join("results", "multistep", "arima")
+        ds_name = 'synthetic'
+    results_dir = os.path.join('results', 'multistep', 'arima')
     os.makedirs(results_dir, exist_ok=True)
 
     model.plot_diagnostics(figsize=(20, 14))
-    plt.savefig(os.path.join(results_dir, f"{ds_name}_diagnostics.png"))
+    plt.savefig(os.path.join(results_dir, f'{ds_name}_diagnostics.png'))
 
     plot_observed_vs_forecast(
-        os.path.join(results_dir, f"{ds_name}_inference.png"),
+        os.path.join(results_dir, f'{ds_name}_inference.png'),
         test_ts.values,
         forecast,
-        title=f"ARIMA - Inferência de {args.test_size} no dataset {args.dataset}")
+        title=f'ARIMA - Inferência de {args.test_size} no dataset {args.dataset}')
 
-    pmdf.to_csv(os.path.join(results_dir, f"{ds_name}_metrics.txt"))
+    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'))
 
 
 if __name__ == '__main__':
@@ -103,6 +103,6 @@ if __name__ == '__main__':
 
     start = time.time()
     model, forecast = fit_predict(train_ts, best)
-    print(f"Elapsed time: {round(time.time() - start, 2)} seconds")
+    print(f'Elapsed time: {round(time.time() - start, 2)} seconds')
 
     log_results(pmdf, model, forecast)
