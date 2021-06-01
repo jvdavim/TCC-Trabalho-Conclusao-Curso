@@ -111,10 +111,10 @@ def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion:
     t_sz_min_max = list(itertools.product(t_size, t_min, t_max))
     means = [wp.SimpleMean(), wp.Median(), wp.GeometricMean(), wp.PowerMean(2), wp.HarmonicMean(), wp.ExponentialMean()]
     pmdf = pd.DataFrame()
-    for mean in tqdm(means):
-        for order in tqdm(pdq, leave=False):
-            for thermometer in tqdm(t_sz_min_max, leave=False):
-                for addr in tqdm(addrs, leave=False):
+    for mean in tqdm(means, dynamic_ncols=True):
+        for order in tqdm(pdq, leave=False, dynamic_ncols=True):
+            for thermometer in tqdm(t_sz_min_max, leave=False, dynamic_ncols=True):
+                for addr in tqdm(addrs, leave=False, dynamic_ncols=True):
                     mod = ARWisardEstimator(train_ts, thermometer, addr, order=order, mean=mean)
                     results = mod.fit()
                     forecast = results.forecast(steps=args.test_size)

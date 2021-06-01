@@ -87,9 +87,9 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
 
     param_grid = {
         'changepoint_prior_scale': [0.001, 0.01, 0.1, 0.5],
-        'seasonality_prior_scale': [0.01, 0.1, 1.0, 10.0],
-        'n_changepoints': [5, 15, 25],
-        'seasonality_mode': ['additive', 'multiplicative']
+        # 'seasonality_prior_scale': [0.01, 0.1, 1.0, 10.0],
+        # 'n_changepoints': [5, 15, 25],
+        # 'seasonality_mode': ['additive', 'multiplicative']
     }
 
     # Generate all combinations of parameters
@@ -97,7 +97,7 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
     pmdf = pd.DataFrame()
 
     # Use cross validation to evaluate all parameters
-    for params in tqdm(all_params):
+    for params in tqdm(all_params, dynamic_ncols=True):
         with suppress_stdout_stderr():
             m = Prophet(**params).fit(train_ts)  # Fit model with given params
             df_cv = cross_validation(m, horizon=f'{args.test_size} days', parallel='processes')
@@ -161,10 +161,7 @@ if __name__ == '__main__':
     pmdf, best = search_hyperparameters(train_ts, criterion='mae')
 
     start = time.time()
-    try:
-        model, forecast = fit_predict(train_ts, best)
-    except Exception as ex:
-        print(f'Erro: {ex}')
+    model, forecast = fit_predict(train_ts, best)
     print(f'Elapsed time: {round(time.time() - start, 2)} seconds')
 
     log_results(pmdf, forecast, model)

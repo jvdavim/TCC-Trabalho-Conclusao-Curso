@@ -29,7 +29,7 @@ def search_hyperparameters(train_ts: np.ndarray, test_ts: np.ndarray, criterion:
     p = d = q = range(0, 10)
     pdq = list(itertools.product(p, d, q))
     pmdf = pd.DataFrame()
-    for param in tqdm(pdq, desc='Searching best hyperparameters'):
+    for param in tqdm(pdq, dynamic_ncols=True):
         mod = ARIMA(train_ts, order=param, enforce_stationarity=False, enforce_invertibility=False)
         results = mod.fit()
         forecast = results.forecast(steps=args.test_size)
