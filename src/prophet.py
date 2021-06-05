@@ -4,6 +4,7 @@ import itertools
 import os
 import time
 import warnings
+from typing import Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -20,9 +21,10 @@ plt.style.use('ggplot')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--best', type=str)
+parser.add_argument('--criterion', type=str, default='mae')
 parser.add_argument('--dataset', type=str)
 parser.add_argument('--test-size', default=7)
-args = parser.parse_args()
+args = vars(parser.parse_args())
 
 
 class suppress_stdout_stderr(object):
@@ -54,6 +56,32 @@ class suppress_stdout_stderr(object):
             os.close(fd)
 
 
+def prepare_logs() -> Tuple[str, os.PathLike]:
+    if 'covid' in args['dataset']:
+        ds_name = 'covid'
+    elif 'temperatures' in args['dataset']:
+        ds_name = 'temperatures'
+    else:
+        ds_name = 'synthetic'
+    results_dir = os.path.join('results', 'prophet')
+    os.makedirs(results_dir, exist_ok=True)
+    return ds_name, results_dir
+
+
+def prepare_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
+    ts = pd.read_csv(args['dataset'])
+    ts.columns = ['ds', 'y']
+    if 'synthetic' in args['dataset']:
+        ts['ds'] = pd.date_range(start=datetime.date(2020, 12, 14) - datetime.timedelta(days=len(ts.ds)),
+                                 end=datetime.date(2020, 12, 13))
+
+    if isinstance(args['test_size'], float):
+        args['test_size'] = int(len(ts) * args['test_size'])
+    train_ts = ts.iloc[:-args['test_size'], :]
+    test_ts = ts.iloc[-args['test_size']:]
+    return train_ts, test_ts
+
+
 def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
     parameters = {
         'growth': 'linear',
@@ -75,7 +103,7 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
         'cap': None,
         'floor': None
     }
-    if 'covid' in args.dataset:
+    if 'covid' in args['dataset']:
         parameters['growth'] = 'logistic'
         parameters['cap'] = 2000
         parameters['floor'] = 0
@@ -87,9 +115,9 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
 
     param_grid = {
         'changepoint_prior_scale': [0.001, 0.01, 0.1, 0.5],
-        # 'seasonality_prior_scale': [0.01, 0.1, 1.0, 10.0],
-        # 'n_changepoints': [5, 15, 25],
-        # 'seasonality_mode': ['additive', 'multiplicative']
+        'seasonality_prior_scale': [0.01, 0.1, 1.0, 10.0],
+        'n_changepoints': [5, 15, 25],
+        'seasonality_mode': ['additive', 'multiplicative']
     }
 
     # Generate all combinations of parameters
@@ -100,68 +128,45 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
     for params in tqdm(all_params, dynamic_ncols=True):
         with suppress_stdout_stderr():
             m = Prophet(**params).fit(train_ts)  # Fit model with given params
-            df_cv = cross_validation(m, horizon=f'{args.test_size} days', parallel='processes')
+            df_cv = cross_validation(m, horizon=f"{args['test_size']} days", parallel='processes')
             df_p = performance_metrics(df_cv, rolling_window=1)
             pmdf = pmdf.append({**params, **dict(zip(df_p.columns, df_p.iloc[0, :].values))}, ignore_index=True)
 
+    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'), index=False)
     best = pmdf[pmdf[criterion].abs().eq(pmdf[criterion].abs().min())].iloc[0]
 
-    return pmdf, best
+    return best
 
 
-@profile(precision=4, stream=open(f"{os.path.join('results', 'prophet')}/{args.dataset.split('/')[-2]}.log", 'w+'))
+@ profile(precision=4, stream=open(f"{os.path.join('results', 'prophet')}/{args['dataset'].split('/')[-2]}.log", 'w+'))
 def fit_predict(train_ts: np.ndarray, best: pd.Series):
+    # TODO debug
     model = Prophet(**best.to_dict()).fit(train_ts)
-    future = model.make_future_dataframe(periods=args.test_size)
+    future = model.make_future_dataframe(periods=args['test_size'])
     forecast = model.predict(future)
     return model, forecast
 
 
-def log_results(pmdf, forecast, model):
-    if 'covid' in args.dataset:
-        ds_name = 'covid'
-    elif 'temperatures' in args.dataset:
-        ds_name = 'temperatures'
-    else:
-        ds_name = 'synthetic'
-    results_dir = os.path.join('results', 'prophet')
-    os.makedirs(results_dir, exist_ok=True)
-
-    try:
-        plot_observed_vs_forecast(
-            os.path.join(results_dir, f'{ds_name}_inference.png'),
-            test_ts.values,
-            forecast.iloc[-args.test_size:, :].values,
-            title=f'Prophet - Inferência de {args.test_size} no dataset {ds_name}')
-    except Exception as ex:
-        print(f'Erro: {ex}')
-
-    try:
-        model.plot_components(forecast)
-        plt.savefig(os.path.join(results_dir, f'{ds_name}_diagnostics.png'))
-    except Exception as ex:
-        print(f'Erro: {ex}')
-
-    pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'), index=False)
-
-
 if __name__ == '__main__':
-    ts = pd.read_csv(args.dataset)
-    ts.columns = ['ds', 'y']
-    if 'synthetic' in args.dataset:
-        ts['ds'] = pd.date_range(start=datetime.date(2020, 12, 14) - datetime.timedelta(days=len(ts.ds)),
-                                 end=datetime.date(2020, 12, 13))
+    ds_name, results_dir = prepare_logs()
+    train_ts, test_ts = prepare_data()
 
-    # Split train and test data
-    if isinstance(args.test_size, float):
-        args.test_size = int(len(ts) * args.test_size)
-    train_ts = ts.iloc[:-args.test_size, :]
-    test_ts = ts.iloc[-args.test_size:]
-
-    pmdf, best = search_hyperparameters(train_ts, criterion='mae')
+    if not args['best']:
+        best = search_hyperparameters(train_ts, criterion=args['criterion'])
+    else:
+        criterion = args['criterion']
+        pmdf = pd.read_csv(args['best'])
+        best = pmdf[pmdf[criterion].abs().eq(pmdf[criterion].abs().min())].iloc[0]
 
     start = time.time()
     model, forecast = fit_predict(train_ts, best)
     print(f'Elapsed time: {round(time.time() - start, 2)} seconds')
 
-    log_results(pmdf, forecast, model)
+    plot_observed_vs_forecast(
+        os.path.join(results_dir, f'{ds_name}_inference.png'),
+        test_ts.values,
+        forecast.iloc[-args['test_size']:, :].values,
+        title=f"Prophet - Inferência de {args['test_size']} no dataset {ds_name}")
+
+    model.plot_components(forecast)
+    plt.savefig(os.path.join(results_dir, f'{ds_name}_diagnostics.png'))
