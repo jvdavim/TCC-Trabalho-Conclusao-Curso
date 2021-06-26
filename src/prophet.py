@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import inspect
 import itertools
 import os
 import time
@@ -9,7 +10,6 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import pandas as pd
 from fbprophet import Prophet
-from fbprophet.diagnostics import cross_validation, performance_metrics
 from memory_profiler import profile
 from tqdm import tqdm
 
@@ -24,9 +24,28 @@ parser.add_argument('--best', type=str)
 parser.add_argument('--criterion', type=str, default='mae')
 parser.add_argument('--dataset', type=str)
 parser.add_argument('--test-size', default=7)
+parser.add_argument('--cap', type=int)
+parser.add_argument('--floor', type=int)
 args = vars(parser.parse_args())
 
-
+parameters = {
+    'growth': 'linear',
+    'changepoints': None,
+    'n_changepoints': 25,
+    'changepoint_range': 0.8,
+    'yearly_seasonality': 'auto',
+    'weekly_seasonality': 'auto',
+    'daily_seasonality': 'auto',
+    'holidays': None,
+    'seasonality_mode': 'additive',
+    'seasonality_prior_scale': 10.0,
+    'holidays_prior_scale': 10.0,
+    'changepoint_prior_scale': 0.05,
+    'mcmc_samples': 0,
+    'interval_width': 0.80,
+    'uncertainty_samples': 1000,
+    'stan_backend': None
+}
 class suppress_stdout_stderr(object):
     """A context manager for doing a 'deep suppression' of stdout and stderr in
     Python, i.e. will suppress all print, even if the print originates in a
@@ -83,36 +102,31 @@ def prepare_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
-    parameters = {
-        'growth': 'linear',
-        'changepoints': None,
-        'n_changepoints': 25,
-        'changepoint_range': 0.8,
-        'yearly_seasonality': 'auto',
-        'weekly_seasonality': 'auto',
-        'daily_seasonality': 'auto',
-        'holidays': None,
-        'seasonality_mode': 'additive',
-        'seasonality_prior_scale': 10.0,
-        'holidays_prior_scale': 10.0,
-        'changepoint_prior_scale': 0.05,
-        'mcmc_samples': 0,
-        'interval_width': 0.80,
-        'uncertainty_samples': 1000,
-        'stan_backend': None,
-        'cap': None,
-        'floor': None
-    }
+    cap, floor = None, None
     if 'covid' in args['dataset']:
         parameters['growth'] = 'logistic'
-        parameters['cap'] = 2000
-        parameters['floor'] = 0
+        args['cap'] = 2000
+        args['floor'] = 0
+        parameters['daily_seasonality'] = False
+        parameters['weekly_seasonality'] = True
+        parameters['yearly_seasonality'] = False
+    elif 'temperatures' in args['dataset']:
+        parameters['growth'] = 'logistic'
+        args['cap'] = 30
+        args['floor'] = -5
+        parameters['daily_seasonality'] = True
+        parameters['weekly_seasonality'] = False
+        parameters['yearly_seasonality'] = True
+    else:
+        parameters['growth'] = 'linear'
         parameters['daily_seasonality'] = False
         parameters['weekly_seasonality'] = True
         parameters['yearly_seasonality'] = False
 
-    # TODO Add other dataset parameters
-
+    if parameters['growth'] == 'logistic':
+        train_ts['floor'] = args['floor']
+        train_ts['cap'] = args['cap']
+    
     param_grid = {
         'changepoint_prior_scale': [0.001, 0.01, 0.1, 0.5],
         'seasonality_prior_scale': [0.01, 0.1, 1.0, 10.0],
@@ -127,10 +141,21 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
     # Use cross validation to evaluate all parameters
     for params in tqdm(all_params, dynamic_ncols=True):
         with suppress_stdout_stderr():
-            m = Prophet(**params).fit(train_ts)  # Fit model with given params
-            df_cv = cross_validation(m, horizon=f"{args['test_size']} days", parallel='processes')
-            df_p = performance_metrics(df_cv, rolling_window=1)
-            pmdf = pmdf.append({**params, **dict(zip(df_p.columns, df_p.iloc[0, :].values))}, ignore_index=True)
+            parameters.update(params)
+            try:
+                m = Prophet(**parameters).fit(train_ts)  # Fit model with given params
+                future = m.make_future_dataframe(periods=args['test_size'])
+                future['floor'] = floor
+                future['cap'] = cap
+                forecast = m.predict(future)
+                predicted = forecast.loc[:, 'yhat'].iloc[-args['test_size']:].values
+                _rmse = rmse(test_ts.y.values, predicted)
+                _mape = mape(test_ts.y.values, predicted)
+                _mpe = mpe(test_ts.y.values, predicted)
+                _mae = mae(test_ts.y.values, predicted)
+                pmdf = pmdf.append({**parameters, 'rmse': _rmse, 'mape': _mape, 'mae': _mae, 'mpe': _mpe}, ignore_index=True)
+            except RuntimeError:
+                print(f'[ERROR] Error with following hyperparameters: {parameters}')
 
     pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'), index=False)
     best = pmdf[pmdf[criterion].abs().eq(pmdf[criterion].abs().min())].iloc[0]
@@ -138,13 +163,17 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
     return best
 
 
-@ profile(precision=4, stream=open(f"{os.path.join('results', 'prophet')}/{args['dataset'].split('/')[-2]}.log", 'w+'))
-def fit_predict(train_ts: np.ndarray, best: pd.Series):
-    # TODO debug
-    model = Prophet(**best.to_dict()).fit(train_ts)
-    future = model.make_future_dataframe(periods=args['test_size'])
-    forecast = model.predict(future)
-    return model, forecast
+@profile(precision=4, stream=open(f"{os.path.join('results', 'prophet')}/{args['dataset'].split('/')[-2]}.log", 'w+'))
+def fit_predict(train_ts: np.ndarray, best: dict):
+    if 'floor' in args.keys():
+        train_ts['floor'] = args['floor']
+    if 'cap' in args.keys():
+        train_ts['cap'] = args['cap']
+    m = Prophet(**best).fit(train_ts)  # Fit model with given params
+    future = m.make_future_dataframe(periods=args['test_size'])
+    forecast = m.predict(future)
+    predicted = forecast.loc[:, 'yhat'].iloc[-args['test_size']:].values
+    return model, predicted
 
 
 if __name__ == '__main__':
@@ -157,6 +186,9 @@ if __name__ == '__main__':
         criterion = args['criterion']
         pmdf = pd.read_csv(args['best'])
         best = pmdf[pmdf[criterion].abs().eq(pmdf[criterion].abs().min())].iloc[0]
+
+    best = {k: (v if not pd.isna(v) else None) for k, v in best.to_dict().items() if k in parameters.keys()}
+    best
 
     start = time.time()
     model, forecast = fit_predict(train_ts, best)

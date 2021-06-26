@@ -1,0 +1,18 @@
+{
+    "growth": "linear",
+    "changepoints": null,
+    "n_changepoints": 25,
+    "changepoint_range": 0.8,
+    "yearly_seasonality": "auto",
+    "weekly_seasonality": "auto",
+    "daily_seasonality": "auto",
+    "holidays": null,
+    "seasonality_mode": "additive",
+    "seasonality_prior_scale": 10.0,
+    "holidays_prior_scale": 10.0,
+    "changepoint_prior_scale": 0.05,
+    "mcmc_samples": 0,
+    "interval_width": 0.80,
+    "uncertainty_samples": 1000,
+    "stan_backend": null
+}

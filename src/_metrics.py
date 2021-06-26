@@ -6,8 +6,7 @@ import pandas as pd
 plt.style.use('ggplot')
 
 
-def best(df, col):
-    return df[df[col].abs().eq(df[col].abs().min())].loc[:, col].iloc[0]
+best = lambda df, col: df[df[col].abs().eq(df[col].abs().min())].loc[:, col].iloc[0]
 
 
 if __name__ == '__main__':
@@ -38,13 +37,13 @@ if __name__ == '__main__':
 
     for dataset in datasets:
         df[df['dataset'] == dataset].pivot('dataset', 'model', 'rmse').plot.bar(title=f'{dataset} rmse')
-        plt.savefig(f'results/{dataset}_rmse_histogram.png')
+        plt.savefig(f'results/metrics/{dataset}_rmse_histogram.png')
 
         df[df['dataset'] == dataset].pivot('dataset', 'model', 'mape').plot.bar(title=f'{dataset} mape')
-        plt.savefig(f'results/{dataset}_mape_histogram.png')
+        plt.savefig(f'results/metrics/{dataset}_mape_histogram.png')
 
         df[df['dataset'] == dataset].pivot('dataset', 'model', 'mpe').plot.bar(title=f'{dataset} mpe')
-        plt.savefig(f'results/{dataset}_mpe_histogram.png')
+        plt.savefig(f'results/metrics/{dataset}_mpe_histogram.png')
 
         df[df['dataset'] == dataset].pivot('dataset', 'model', 'mae').plot.bar(title=f'{dataset} mae')
-        plt.savefig(f'results/{dataset}_mae_histogram.png')
+        plt.savefig(f'results/metrics/{dataset}_mae_histogram.png')
