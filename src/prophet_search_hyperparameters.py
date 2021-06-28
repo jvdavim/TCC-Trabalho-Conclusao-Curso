@@ -1,20 +1,17 @@
 import argparse
 import datetime
-import inspect
 import itertools
 import os
-import time
 import warnings
 from typing import Tuple
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from fbprophet import Prophet
-from memory_profiler import profile
 from tqdm import tqdm
 
 from utils.metrics import *
-from utils.plot import plot_observed_vs_forecast
 
 warnings.filterwarnings('ignore')
 plt.style.use('ggplot')
@@ -46,6 +43,8 @@ parameters = {
     'uncertainty_samples': 1000,
     'stan_backend': None
 }
+
+
 class suppress_stdout_stderr(object):
     """A context manager for doing a 'deep suppression' of stdout and stderr in
     Python, i.e. will suppress all print, even if the print originates in a
@@ -102,7 +101,6 @@ def prepare_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
-    cap, floor = None, None
     if 'covid' in args['dataset']:
         parameters['growth'] = 'logistic'
         args['cap'] = 2000
@@ -126,7 +124,7 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
     if parameters['growth'] == 'logistic':
         train_ts['floor'] = args['floor']
         train_ts['cap'] = args['cap']
-    
+
     param_grid = {
         'changepoint_prior_scale': [0.001, 0.01, 0.1, 0.5],
         'seasonality_prior_scale': [0.01, 0.1, 1.0, 10.0],
@@ -145,15 +143,21 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
             try:
                 m = Prophet(**parameters).fit(train_ts)  # Fit model with given params
                 future = m.make_future_dataframe(periods=args['test_size'])
-                future['floor'] = floor
-                future['cap'] = cap
+                future['floor'] = args['floor']
+                future['cap'] = args['cap']
                 forecast = m.predict(future)
                 predicted = forecast.loc[:, 'yhat'].iloc[-args['test_size']:].values
                 _rmse = rmse(test_ts.y.values, predicted)
                 _mape = mape(test_ts.y.values, predicted)
                 _mpe = mpe(test_ts.y.values, predicted)
                 _mae = mae(test_ts.y.values, predicted)
-                pmdf = pmdf.append({**parameters, 'rmse': _rmse, 'mape': _mape, 'mae': _mae, 'mpe': _mpe}, ignore_index=True)
+                pmdf = pmdf.append({
+                    **parameters, 'rmse': _rmse,
+                    'mape': _mape,
+                    'mae': _mae,
+                    'mpe': _mpe
+                },
+                                   ignore_index=True)
             except RuntimeError:
                 print(f'[ERROR] Error with following hyperparameters: {parameters}')
 
@@ -163,42 +167,8 @@ def search_hyperparameters(train_ts: np.ndarray, criterion: str = 'mae'):
     return best
 
 
-@profile(precision=4, stream=open(f"{os.path.join('results', 'prophet')}/{args['dataset'].split('/')[-2]}.log", 'w+'))
-def fit_predict(train_ts: np.ndarray, best: dict):
-    if 'floor' in args.keys():
-        train_ts['floor'] = args['floor']
-    if 'cap' in args.keys():
-        train_ts['cap'] = args['cap']
-    m = Prophet(**best).fit(train_ts)  # Fit model with given params
-    future = m.make_future_dataframe(periods=args['test_size'])
-    forecast = m.predict(future)
-    predicted = forecast.loc[:, 'yhat'].iloc[-args['test_size']:].values
-    return model, predicted
-
-
 if __name__ == '__main__':
     ds_name, results_dir = prepare_logs()
     train_ts, test_ts = prepare_data()
 
-    if not args['best']:
-        best = search_hyperparameters(train_ts, criterion=args['criterion'])
-    else:
-        criterion = args['criterion']
-        pmdf = pd.read_csv(args['best'])
-        best = pmdf[pmdf[criterion].abs().eq(pmdf[criterion].abs().min())].iloc[0]
-
-    best = {k: (v if not pd.isna(v) else None) for k, v in best.to_dict().items() if k in parameters.keys()}
-    best
-
-    start = time.time()
-    model, forecast = fit_predict(train_ts, best)
-    print(f'Elapsed time: {round(time.time() - start, 2)} seconds')
-
-    plot_observed_vs_forecast(
-        os.path.join(results_dir, f'{ds_name}_inference.png'),
-        test_ts.values,
-        forecast.iloc[-args['test_size']:, :].values,
-        title=f"Prophet - Inferência de {args['test_size']} no dataset {ds_name}")
-
-    model.plot_components(forecast)
-    plt.savefig(os.path.join(results_dir, f'{ds_name}_diagnostics.png'))
+    best = search_hyperparameters(train_ts, criterion=args['criterion'])
