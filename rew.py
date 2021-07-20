@@ -8,16 +8,19 @@ Output:
 
 import argparse
 import csv
+import importlib
 import itertools
 import os
+import re
 import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import wisardpkg as wp
-from metrics import mae, mape, mpe, rmse
 from tqdm import tqdm
+
+from metrics import mae, mape, mpe, rmse
 
 warnings.filterwarnings('ignore')
 plt.style.use('ggplot')
@@ -108,6 +111,17 @@ class RegressionWisardEstimator(wp.RegressionWisard):
         return agg
 
 
+def get_name(self):
+    m = re.search('\<wisardpkg\.(\w+).*', self.__str__())
+    return m.group(1)
+
+
+wp.SimpleMean.get_name = get_name
+wp.Median.get_name = get_name
+wp.GeometricMean.get_name = get_name
+wp.PowerMean.get_name = get_name
+wp.HarmonicMean.get_name = get_name
+wp.ExponentialMean.get_name = get_name
 # @profile(precision=4, stream=open(f"{os.path.join('results', 'arwisard')}/{args.dataset.split('/')[-2]}.log", 'w+'))
 # def fit_predict(train_ts: np.ndarray, best: pd.Series):
 #     # TODO Replace simple mean with the best one
@@ -135,7 +149,7 @@ class RegressionWisardEstimator(wp.RegressionWisard):
 
 if __name__ == '__main__':
     DATSET_NAME = args.dataset.split('/')[-1].split('.')[0]
-    RESULTS_DIR = os.path.join('results', 'arima')
+    RESULTS_DIR = os.path.join('results', 'rew')
 
     # Load dataset
     ts = pd.read_csv(args.dataset, index_col=0, sep=';')
@@ -143,16 +157,16 @@ if __name__ == '__main__':
     # Split train and test
     if isinstance(args.test_size, float):
         args.test_size = (ts.size * args.test_size)
-    train_ts = ts.iloc[:-args.test_size - args.val_size].values
-    val_ts = ts.iloc[-args.test_size - args.val_size:-args.test_size].values
-    test_ts = ts.iloc[-args.test_size:].values
+    train_ts = ts.iloc[:-args.test_size - args.val_size]
+    val_ts = ts.iloc[-args.test_size - args.val_size:-args.test_size]
+    test_ts = ts.iloc[-args.test_size:]
 
     # Grid parameters
     p = q = range(0, 10)
     d = [0]
     t_size = np.arange(256, 1024, 256, dtype=int)
-    t_min = np.linspace(train_ts.min(), train_ts.quantile(0.25), 5, dtype=float)
-    t_max = np.linspace(train_ts.quantile(0.75), train_ts.max(), 5, dtype=float)
+    t_min = np.linspace(train_ts.min(), train_ts.quantile(0.25), 5, dtype=float, axis=-1)[0]
+    t_max = np.linspace(train_ts.quantile(0.75), train_ts.max(), 5, dtype=float, axis=-1)[0]
     addrs = np.arange(5, 25, dtype=int)
     pdq = list(itertools.product(p, d, q))
     t_sz_min_max = list(itertools.product(t_size, t_min, t_max))
@@ -177,56 +191,56 @@ if __name__ == '__main__':
                             _mape = mape(test_ts.values, forecast)
                             _mpe = mpe(test_ts.values, forecast)
                             _mae = mae(test_ts.values, forecast)
-                            writer.writerow(
-                                {
-                                    't_size': thermometer[0],
-                                    't_min': thermometer[1],
-                                    't_max': thermometer[2],
-                                    'addr': addr,
-                                    'mean_type': str(mean),
-                                    'p': order[0],
-                                    'd': order[1],
-                                    'q': order[2],
-                                    'rmse': _rmse,
-                                    'mape': _mape,
-                                    'mae': _mae,
-                                    'mpe': _mpe
-                                },
-                                ignore_index=True)
+                            writer.writerow({
+                                't_size': thermometer[0],
+                                't_min': thermometer[1],
+                                't_max': thermometer[2],
+                                'addr': addr,
+                                'mean_type': mean.get_name(),
+                                'p': order[0],
+                                'd': order[1],
+                                'q': order[2],
+                                'rmse': _rmse,
+                                'mape': _mape,
+                                'mae': _mae,
+                                'mpe': _mpe
+                            })
                             output_file.flush()
 
     grid_results_df = pd.read_csv(os.path.join(RESULTS_DIR, f'{DATSET_NAME}_grid_results.csv'), sep=';')
 
     # Test
-    opt_metrics = ['rmse', 'mape', 'mae', 'mpe']
-    with open(os.path.join(RESULTS_DIR, f'{DATSET_NAME}_test_results.csv'), 'w') as output_file:
-        header = ['opt_metric', 'rmse', 'mape', 'mae', 'mpe']
-        writer = csv.DictWriter(output_file, fieldnames=header, delimiter=';')
-        writer.writeheader()
+    # opt_metrics = ['rmse', 'mape', 'mae', 'mpe']
+    # with open(os.path.join(RESULTS_DIR, f'{DATSET_NAME}_test_results.csv'), 'w') as output_file:
+    #     header = ['opt_metric', 'rmse', 'mape', 'mae', 'mpe']
+    #     writer = csv.DictWriter(output_file, fieldnames=header, delimiter=';')
+    #     writer.writeheader()
 
-        for opt_metric in opt_metrics:
-            # Select best hyperparameters set for the current opt_metric
-            best = grid_results_df[grid_results_df[opt_metric].abs().eq(
-                grid_results_df[opt_metric].abs().min())].iloc[0]
-            thermometer = (best.t_size, best.t_min, best.t_max)
-            order = (best.p, best.d, best.q)
-            addr = best.addr
-            mean = best.mean_type
+    #     for opt_metric in opt_metrics:
+    #         # Select best hyperparameters set for the current opt_metric
+    #         best = grid_results_df[grid_results_df[opt_metric].abs().eq(
+    #             grid_results_df[opt_metric].abs().min())].iloc[0]
+    #         thermometer = (best.t_size, best.t_min, best.t_max)
+    #         order = (best.p, best.d, best.q)
+    #         addr = best.addr
+    #         module = importlib.import_module('wisardpkg')
+    #         class_ = getattr(module, best.mean_type)
+    #         mean = class_() if best.mean_type != 'PowerMean' else class_(2)
 
-            # Train ReW model with selected hyperparams and train + validation data
-            model = RegressionWisardEstimator(np.concatenate((train_ts, val_ts)),
-                                              thermometer,
-                                              addr,
-                                              order=order,
-                                              mean=mean)
-            results = model.fit()
-            forecast = results.forecast(steps=args.test_size)
+    #         # Train ReW model with selected hyperparams and train + validation data
+    #         model = RegressionWisardEstimator(np.concatenate((train_ts, val_ts)),
+    #                                           thermometer,
+    #                                           addr,
+    #                                           order=order,
+    #                                           mean=mean)
+    #         results = model.fit()
+    #         forecast = results.forecast(steps=args.test_size)
 
-            writer.writerow({
-                'opt_metric': opt_metric,
-                'rmse': rmse(test_ts, forecast),
-                'mape': mape(test_ts, forecast),
-                'mae': mae(test_ts, forecast),
-                'mpe': mpe(test_ts, forecast)
-            })
-            output_file.flush()
+    #         writer.writerow({
+    #             'opt_metric': opt_metric,
+    #             'rmse': rmse(test_ts, forecast),
+    #             'mape': mape(test_ts, forecast),
+    #             'mae': mae(test_ts, forecast),
+    #             'mpe': mpe(test_ts, forecast)
+    #         })
+    #         output_file.flush()
