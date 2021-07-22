@@ -25,13 +25,6 @@ from metrics import mae, mape, mpe, rmse
 warnings.filterwarnings('ignore')
 plt.style.use('ggplot')
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, help='Path to data file.csv.')
-parser.add_argument('--val-size', default=7, help='Validation size.')
-parser.add_argument('--test-size', default=7, help='Test size')
-parser.add_argument('--search-hyperparameters', action='store_true', help='Search hyperparameters.')
-args = parser.parse_args()
-
 
 class RegressionWisardEstimator(wp.RegressionWisard):
 
@@ -148,6 +141,13 @@ wp.ExponentialMean.get_name = get_name
 #     pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'), index=False)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', type=str, help='Path to data file.csv.')
+    parser.add_argument('--val-size', default=7, help='Validation size.')
+    parser.add_argument('--test-size', default=7, help='Test size')
+    parser.add_argument('--search-hyperparameters', action='store_true', help='Search hyperparameters.')
+    args = parser.parse_args()
+
     DATSET_NAME = args.dataset.split('/')[-1].split('.')[0]
     RESULTS_DIR = os.path.join('results', 'rew')
 
@@ -228,11 +228,7 @@ if __name__ == '__main__':
             mean = class_() if best.mean_type != 'PowerMean' else class_(2)
 
             # Train ReW model with selected hyperparams and train + validation data
-            model = RegressionWisardEstimator(pd.concat([train_ts, val_ts]),
-                                              thermometer,
-                                              addr,
-                                              order=order,
-                                              mean=mean)
+            model = RegressionWisardEstimator(pd.concat([train_ts, val_ts]), thermometer, addr, order=order, mean=mean)
             results = model.fit()
             forecast = results.forecast(steps=args.test_size)
 
