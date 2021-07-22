@@ -210,37 +210,37 @@ if __name__ == '__main__':
     grid_results_df = pd.read_csv(os.path.join(RESULTS_DIR, f'{DATSET_NAME}_grid_results.csv'), sep=';')
 
     # Test
-    # opt_metrics = ['rmse', 'mape', 'mae', 'mpe']
-    # with open(os.path.join(RESULTS_DIR, f'{DATSET_NAME}_test_results.csv'), 'w') as output_file:
-    #     header = ['opt_metric', 'rmse', 'mape', 'mae', 'mpe']
-    #     writer = csv.DictWriter(output_file, fieldnames=header, delimiter=';')
-    #     writer.writeheader()
+    opt_metrics = ['rmse', 'mape', 'mae', 'mpe']
+    with open(os.path.join(RESULTS_DIR, f'{DATSET_NAME}_test_results.csv'), 'w') as output_file:
+        header = ['opt_metric', 'rmse', 'mape', 'mae', 'mpe']
+        writer = csv.DictWriter(output_file, fieldnames=header, delimiter=';')
+        writer.writeheader()
 
-    #     for opt_metric in opt_metrics:
-    #         # Select best hyperparameters set for the current opt_metric
-    #         best = grid_results_df[grid_results_df[opt_metric].abs().eq(
-    #             grid_results_df[opt_metric].abs().min())].iloc[0]
-    #         thermometer = (best.t_size, best.t_min, best.t_max)
-    #         order = (best.p, best.d, best.q)
-    #         addr = best.addr
-    #         module = importlib.import_module('wisardpkg')
-    #         class_ = getattr(module, best.mean_type)
-    #         mean = class_() if best.mean_type != 'PowerMean' else class_(2)
+        for opt_metric in opt_metrics:
+            # Select best hyperparameters set for the current opt_metric
+            best = grid_results_df[grid_results_df[opt_metric].abs().eq(
+                grid_results_df[opt_metric].abs().min())].iloc[0]
+            thermometer = (best.t_size, best.t_min, best.t_max)
+            order = (best.p, best.d, best.q)
+            addr = best.addr
+            module = importlib.import_module('wisardpkg')
+            class_ = getattr(module, best.mean_type)
+            mean = class_() if best.mean_type != 'PowerMean' else class_(2)
 
-    #         # Train ReW model with selected hyperparams and train + validation data
-    #         model = RegressionWisardEstimator(np.concatenate((train_ts, val_ts)),
-    #                                           thermometer,
-    #                                           addr,
-    #                                           order=order,
-    #                                           mean=mean)
-    #         results = model.fit()
-    #         forecast = results.forecast(steps=args.test_size)
+            # Train ReW model with selected hyperparams and train + validation data
+            model = RegressionWisardEstimator(pd.concat([train_ts, val_ts]),
+                                              thermometer,
+                                              addr,
+                                              order=order,
+                                              mean=mean)
+            results = model.fit()
+            forecast = results.forecast(steps=args.test_size)
 
-    #         writer.writerow({
-    #             'opt_metric': opt_metric,
-    #             'rmse': rmse(test_ts, forecast),
-    #             'mape': mape(test_ts, forecast),
-    #             'mae': mae(test_ts, forecast),
-    #             'mpe': mpe(test_ts, forecast)
-    #         })
-    #         output_file.flush()
+            writer.writerow({
+                'opt_metric': opt_metric,
+                'rmse': rmse(test_ts.values, forecast),
+                'mape': mape(test_ts.values, forecast),
+                'mae': mae(test_ts.values, forecast),
+                'mpe': mpe(test_ts.values, forecast)
+            })
+            output_file.flush()
