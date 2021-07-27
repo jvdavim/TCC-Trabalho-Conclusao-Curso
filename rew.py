@@ -115,30 +115,6 @@ wp.GeometricMean.get_name = get_name
 wp.PowerMean.get_name = get_name
 wp.HarmonicMean.get_name = get_name
 wp.ExponentialMean.get_name = get_name
-# @profile(precision=4, stream=open(f"{os.path.join('results', 'arwisard')}/{args.dataset.split('/')[-2]}.log", 'w+'))
-# def fit_predict(train_ts: np.ndarray, best: pd.Series):
-#     # TODO Replace simple mean with the best one
-#     model = ARWisardEstimator(train_ts, best['thermometer'], best['addr'], order=best['order'],
-#                               mean=wp.SimpleMean()).fit()
-#     forecast = model.forecast(steps=args.test_size)
-#     return model, forecast
-
-# def log_results(pmdf, forecast):
-#     if 'covid' in args.dataset:
-#         ds_name = 'covid'
-#     elif 'temperatures' in args.dataset:
-#         ds_name = 'temperatures'
-#     else:
-#         ds_name = 'synthetic'
-#     results_dir = os.path.join('results', 'arwisard')
-#     os.makedirs(results_dir, exist_ok=True)
-
-#     plot_observed_vs_forecast(os.path.join(results_dir, f'{ds_name}_inference.png'),
-#                               test_ts.values,
-#                               forecast,
-#                               title=f'ARIMA - Inferência de {args.test_size} no dataset {args.dataset}')
-
-#     pmdf.to_csv(os.path.join(results_dir, f'{ds_name}_metrics.txt'), index=False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
