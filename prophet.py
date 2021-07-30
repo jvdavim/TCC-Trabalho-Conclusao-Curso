@@ -107,6 +107,7 @@ if __name__ == '__main__':
         parameters['daily_seasonality'] = False
         parameters['weekly_seasonality'] = True
         parameters['yearly_seasonality'] = False
+
     # Split train and test
     if isinstance(args.test_size, float):
         args.test_size = (ts.size * args.test_size)
