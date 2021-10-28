@@ -44,7 +44,6 @@ def main() -> None:
     ts = pd.read_csv(args.dataset_path, index_col=0, sep=';').values
     grid_results_df = pd.read_csv(os.path.join('results/prophet', f"{args.dataset_name}_grid_results.csv"), sep=';')
     best = grid_results_df[grid_results_df[args.metric].abs().eq(grid_results_df[args.metric].abs().min())].iloc[0]
-    best = grid_results_df[grid_results_df[args.metric].abs().eq(grid_results_df[args.metric].abs().min())].iloc[0]
     params = best.iloc[:-4].to_dict()
     params = {k: v for k, v in params.items() if not (np.isnan(v) if type(v) == np.float64 else False)}
     parameters.update(params)
