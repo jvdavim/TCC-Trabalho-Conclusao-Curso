@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset-path', type=str, help='')
 parser.add_argument('--dataset-name', type=str, help='')
 parser.add_argument('--metric', type=str, help='')
-parser.add_argument('--test-size', type=int, help='')
+parser.add_argument('--test-size', default=7, type=int, help='')
 args = parser.parse_args()
 
 
@@ -41,12 +41,32 @@ def main() -> None:
         'uncertainty_samples': 1000,
         'stan_backend': None
     }
-    ts = pd.read_csv(args.dataset_path, index_col=0, sep=';').values
+    ts = pd.read_csv(args.dataset_path, sep=';', names=['ds', 'y'], skiprows=1)
     grid_results_df = pd.read_csv(os.path.join('results/prophet', f"{args.dataset_name}_grid_results.csv"), sep=';')
     best = grid_results_df[grid_results_df[args.metric].abs().eq(grid_results_df[args.metric].abs().min())].iloc[0]
-    params = best.iloc[:-4].to_dict()
+    params = best.where(pd.notnull(best), None).iloc[:-4].to_dict()
     params = {k: v for k, v in params.items() if not (np.isnan(v) if type(v) == np.float64 else False)}
     parameters.update(params)
+    if args.dataset_name == 'casos_confirmados':
+        parameters['growth'] = 'logistic'
+        ts['floor'] = 0
+        ts['cap'] = 2000
+        parameters['daily_seasonality'] = False
+        parameters['weekly_seasonality'] = True
+        parameters['yearly_seasonality'] = False
+    elif args.dataset_name == 'temperaturas':
+        parameters['growth'] = 'logistic'
+        ts['cap'] = 30
+        ts['floor'] = -5
+        parameters['daily_seasonality'] = True
+        parameters['weekly_seasonality'] = False
+        parameters['yearly_seasonality'] = True
+    else:
+        ts['cap'] = None
+        ts['floor'] = None
+        parameters['daily_seasonality'] = False
+        parameters['weekly_seasonality'] = True
+        parameters['yearly_seasonality'] = False
     profile_memory(ts, parameters, args.test_size)
 
 
