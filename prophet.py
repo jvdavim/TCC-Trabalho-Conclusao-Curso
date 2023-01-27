@@ -159,7 +159,7 @@ if __name__ == '__main__':
             # Select best hyperparameters set for the current opt_metric
             best = grid_results_df[grid_results_df[opt_metric].abs().eq(
                 grid_results_df[opt_metric].abs().min())].iloc[0]
-            params = best.iloc[:-4].to_dict()
+            params = best.where(pd.notnull(best), None).iloc[:-4].to_dict()
             params = {k: v for k, v in params.items() if not (np.isnan(v) if type(v) == np.float64 else False)}
             parameters.update(params)
 

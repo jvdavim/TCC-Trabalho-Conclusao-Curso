@@ -1,38 +1,16 @@
 # TCC-Trabalho-de-Conclusao-de-Curso
 
-## Experimentos
-
+## Get Started
 ---
 
-### PROCESSAMENTO
-* gráficos
-    * Série temporal
-    * Média móvel
-    * Decomposição do sinal em sasonalindade, tendência e ruído.
-* tabelas
-    * Resumo (estatísticas pandas)
+Create a virtual environment with python 3.9 (latest patch).
 
----
+Install the dependencies:
 
-### ARIMA
-* gráficos
-    * Diagnóstico do resíduo
-    * Predição n-step ahead
-* tabelas
-    * Predição n-step ahead
-    * RMSE e MAPE
+```bash
+pip install --upgrade pip
+pip install pybind11
+pip install -r requirements.txt
+```
 
----
-
-### ARWISARD
-* gráficos
-    * Predição n-step ahead
-* tabelas
-    * RMSE e MAPE
----
-
-### PROPHET
-* gráficos
-    * Predição n-step ahead
-* tabelas
-    * RMSE e MAPE
+Now, you are able to run any script in the repository.
